@@ -13,7 +13,7 @@ Ubuntu 16.04:
 Pip requirements
 
 Set up MongoDB
-++++++++++++++
+--------------
 
 Follow the instructions in the following tutorial
 
