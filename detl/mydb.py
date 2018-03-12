@@ -88,4 +88,18 @@ class MyDb():
 
         return db_context.get_controller(self)
 
-   
+    def browse(fn_name, origin={}):
+        '''
+        browse('processor_2')
+        browse('processor_2', {'source':{}, 'Preprocessor':{'kwargs':{'num_mul': 50}}})
+
+        '''
+        # TODO : modify the insert to give an object id instead of hash
+        # TODO : write the origins as a dictionary with $and in mongo syntax
+        results = self.coll.find({'name': fn_name})
+        for res in results:
+            if res in origin:
+                yield res
+            else:
+                recursive_find(res, origin)
+
