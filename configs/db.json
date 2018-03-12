@@ -1,0 +1,7 @@
+{
+    "host": "localhost",
+    "port": 27017,
+    "db": "etl_test_database",
+    "collection": "test_pipeline",
+    "data_folder": "data"
+}
