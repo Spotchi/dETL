@@ -1,42 +1,64 @@
+import datetime
 import os
-import pickle
 import pymongo
 import hashlib
 from pymongo import MongoClient
+
+# TODO : Get mongodb configuration from config folder
 client = MongoClient('localhost', 27017)
 db = client.etl_test_database
 coll = db.test_pipeline
 
 data_folder = 'data'
 
-#def hash_resolution(hash_value):
-#    pass
-#    # If the value is in the db then fine, otherwise we need to find a hash that 'means' the same
-#    '''
-#    We can define a function that associates different hashes together. This way we can check that they correspond to the value, and we have loads of tests for free
-#    '''
+# TODO : in the future, split the find into two cases : whether the file is available or not (in that case, can download)
 
-def known_hash(hash_value):
-    hval = hash_value.hexdigest()
-    if coll.find_one({'config_hash': hval}):
-        return True
+def find(identity):
 
-    return False 
+    hash_value = identity.__id_hash__()
+    result = coll.find_one({'config_hash': hash_value})
+    print('From database : ')
+    print(result)
+    if result is not None:
+        if 'file_descriptor' in result:
+            return result['file_descriptor']
+    return None
+
+def insert(identity, results, save_func, save_data=True):
     
-def load(hash_value):
-    hval = hash_value.hexdigest()
-    config = coll.find_one({'config_hash': hval})
-    filename = os.path.join(data_folder, hash_value)
-    print('Loading ', hval)
-    return pickle.load(open(filename, "rb")) 
+    # TODO : move to computation identity class
+    hash_value = identity.__id_hash__()
+    identity_dict = identity.to_dict()
+    
+    # If save_data
+    if save_data:
+        # Create a file path
+        file_path = create_fd(identity)
+        # TODO : handle errors
+        # Save to file path
+        save_func(results, file_path)
+        # Add to dict
+        identity_dict['file_descriptor'] = file_path
 
-def add(hash_value, config, obj_value):
-    hval = hash_value.hexdigest()
-    print(type(hval))
-    post = {'config_hash': hval}
-   
-    post_id = coll.insert_one(post).inserted_id  
-    filename = os.path.join(data_folder, hval)
-    pickle.dump(obj_value, open(filename, "wb")) 
+    # Save to collection
+    post = coll.insert_one(identity_dict)
+    return post
 
-    print('Value inserted at index {} for value {}', hval, post_id)
+
+def create_fd(identity):
+    '''
+    Save to a data folder whose name corresponds to the name of the identity
+    '''
+    # TODO : no global variable
+    # TODO : assuming that the data folder is already created
+    # TODO : move hash_value to identity init
+    hash_value = identity.__id_hash__()
+    folder = os.path.join(data_folder, identity.name)
+    if not os.path.exists(folder):
+        os.mkdir(folder)
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    fname = timestamp + str(hash_value)
+    file_path = os.path.join(folder, fname)
+    return file_path
+    
+
