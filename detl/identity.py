@@ -2,8 +2,10 @@ import types
 import json
 import hashlib
 import copy
-from functools import singledispatch
+from functools import singledispatch, partial
 from detl.db_context import db_context
+from bson.objectid import ObjectId
+from bson.json_util import dumps, loads
 
 def h11(text):
     '''The hash used for the serialized configurations'''
@@ -28,24 +30,39 @@ class Identity(object):
         id_dict = {'name' : self.name, 'args' : self.args, 'kwargs' : self.kwargs}
         return h11(json.dumps(id_dict, sort_keys=True, default=to_serializable ))
 
-    def to_dict(self):
+    def to_dict(self, db=None):
         '''Create a serializable version of the configuration'''
         base_dict =  { 'config_hash': self.__id_hash__(), 
                 'name': self.name, 
                 'args' : self.args, 
                 'kwargs' : self.kwargs}
-        
         serialized_dict = json.dumps(base_dict, default=to_serializable)
+        reloaded_dict = json.loads(serialized_dict)
+        reloaded_dict['args'] = [to_obj_id(el, db=db) for el in reloaded_dict['args']]
+        reloaded_dict['kwargs'] = {k:to_obj_id(val, db=db) for k, val in reloaded_dict['kwargs'].items()}
 
-        return json.loads(serialized_dict)
+        return reloaded_dict 
+
 
 @singledispatch
-def to_serializable(val):
+def to_serializable(val, db = None):
     """Used by default."""
-    return val.__id_hash__()
+    hash_val = val.__id_hash__()
+    return hash_val
+
+def to_obj_id(hash_val, db=None):
+    print(hash_val)
+    if db is not None:
+        res = db.find_from_hash(hash_val)
+        print(res)
+        print('Yodledel')
+        if res is not None:
+            print(res['_id'])
+            return ObjectId(res['_id'])
+    return hash_val
 
 
-
+    return val
 class SourceIdentity(Identity):
     
     def __init__(self, identifier):

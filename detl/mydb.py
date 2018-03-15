@@ -3,8 +3,10 @@ import os
 import pymongo
 import hashlib
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 from detl.db_context import db_context
 import json
+import logging
 
 def db_client(config_path='configs/db.json'):
 
@@ -36,9 +38,12 @@ class MyDb():
 
         hash_value = identity.__id_hash__()
         result = self.coll.find_one({'config_hash': hash_value})
-        print('From database : ')
-        print(result)
         return result
+    
+    def find_from_hash(self, hash_val):
+
+        return self.coll.find_one({'config_hash': hash_val})
+
 
     def find_file(self, identity):
 
@@ -51,7 +56,7 @@ class MyDb():
         
         # TODO : move to computation identity class
         hash_value = identity.__id_hash__()
-        identity_dict = identity.to_dict()
+        identity_dict = identity.to_dict(db=self)
         
         # If save_data
         if save_data:
@@ -94,7 +99,6 @@ class MyDb():
         browse('processor_2', {'source':{}, 'Preprocessor':{'kwargs':{'num_mul': 50}}})
 
         '''
-        # TODO : modify the insert to give an object id instead of hash
         # TODO : write the origins as a dictionary with $and in mongo syntax
         results = self.coll.find({'name': fn_name})
         for res in results:
@@ -102,4 +106,27 @@ class MyDb():
                 yield res
             else:
                 recursive_find(res, origin)
+
+'''
+db.test_pipeline.aggregate(
+[
+{"$graphLookup": {"from": "test_pipeline",
+"startWith": "$args",
+"connectFromField": "args",
+"connectToField" : "_id",
+"as": "ancestors"}},
+{"$match": {"name": "processor_2"}},
+{ "$addFields": { 
+            "ancestors": { 
+                "$reverseArray": { 
+                    "$map": { 
+                        "input": "$ancestors", 
+                        "as": "t", 
+                        "in": { "name": "$$t.name" }
+                    } 
+                } 
+            }
+        }}];
+'''
+
 
