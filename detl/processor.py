@@ -6,17 +6,6 @@ from detl.identity import Identity
 from detl.db_context import db_context
 
 
-# TODO : no need to implement this? Just need to make sure that the state of the object that changes is serialized
-def change_state(changed):
-    def fn_wrapper(fn):
-        @wraps(fn)
-        def change_state(*args, **kwargs):
-            return fn(*args, **kwargs)
-
-        return change_state
-    return fn_wrapper
-
-
 def load_and_save(load_func, save_func):
     def fn_wrapper(fn):
         @wraps(fn)
@@ -43,6 +32,8 @@ def load_and_save(load_func, save_func):
 
 def identity_wrapper(fn):
     def ided_fn(*args, **kwargs):
+
+            compute_identity = Identity(fn.__name__, *args, **kwargs)
         results = fn(*args, **kwargs)
         db = db_context.get_db()
         fd = db.find(results.identity)
@@ -73,4 +64,23 @@ class Processor(object):
     # extend Processor, whose main role will be to keep a hash
     def __id_hash__(self):
         return self.identity.__id_hash__()
-    
+ 
+# TODO : no need to implement this? Just need to make sure that the state of the object that changes is serialized
+def change_state(fn):
+    @wraps(fn)
+    def inner_fn(self, *args, **kwargs):
+        assert issubclass(type(self), Processor)
+        class_name = self.__class__.__name__
+        class_method_name = fn.__name__
+
+        self.identity = Identity(class_name+class_method_name, *args, **kwargs)
+        
+        fd = db.find(self.identity)
+        if fd is None:
+            db.insert(self.identity, None, None, save_data=False)
+ 
+        return fn(*args, **kwargs)
+    return inner_fn
+
+def identity_wrapper(fn):
+
