@@ -52,7 +52,16 @@ class MyDb():
             if 'file_descriptor' in res:
                 return res['file_descriptor']
 
-    def insert(self, identity, results, save_func, save_data=True):
+    
+    def insert(self, results, save_func, save_data=True, unpack_input=False):
+        if unpack_input:
+            for res in results:
+                self._insert(res.identity, res, save_func, save_data=save_data)
+        else:
+            self._insert(results.identity, results, save_func, save_data=save_data)
+
+
+    def _insert(self, identity, results, save_func, save_data=True):
         
         # TODO : move to computation identity class
         hash_value = identity.__id_hash__()

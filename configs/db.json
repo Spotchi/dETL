@@ -2,6 +2,6 @@
     "host": "localhost",
     "port": 27017,
     "db": "etl_test_database",
-    "collection": "test_pipeline",
+    "collection": "mnistdetl",
     "data_folder": "data"
 }

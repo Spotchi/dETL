@@ -17,7 +17,7 @@ class PreProcessor(Processor):
         # TODO : move all assignments to Processor class and make sure they're immutable
         self.num_mul = num_mul
     
-    @change_state([])
+    @change_state
     def set_num(self, new_mul):
         self.num_mul = new_mul
 
