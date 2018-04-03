@@ -7,7 +7,7 @@ from bson.objectid import ObjectId
 from detl.db_context import db_context
 import json
 import logging
-
+from detl.identity import Identity
 def db_client(config_path='configs/db.json'):
 
     with open(config_path) as fd:
@@ -45,7 +45,13 @@ class MyDb():
         return self.coll.find_one({'config_hash': hash_val})
 
 
-    def find_file(self, identity):
+    def find_file(self, identity, unpack_input=False, unpack_len=0):
+        if unpack_input:
+            all_identities = [Identity('unpack', [identity, i], {}) for i in range(unpack_len)]
+            return [self._find_file(all_identities[i]) for i in range(unpack_len)]
+        return self._find_file(identity)
+
+    def _find_file(self, identity):
 
         res = self.find(identity)
         if res is not None:

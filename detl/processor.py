@@ -27,20 +27,24 @@ def load_and_save(load_func, save_func, unpack=False):
             if db is None:
                 return identify(fn(*args, **kwargs), unpack=unpack)
             
-            # If unpacking is on we need to be able to trace where the elements come from
-            if unpack:
-                db._insert(compute_identity, None, None, save_data=False)
-            
+            # TODO : Where to get the length from?
+            fd = db.find_file(compute_identity, unpack_input=unpack, unpack_len=4)
 
-            fd = db.find_file(compute_identity)
-            
-            if fd is not None:
+            # Either fd is not none for the base case or none of the unpacked fd is None
+            if (fd is not None and not unpack) or \
+                (unpack and not any(el is None for el in fd)):
                 print('Loading from {}'.format(fd))
-                results = identify(load(load_func, fd, unpack=unpack), compute_identity, unpack_input=unpack)
+                results = identify(load(load_func, fd, unpack=unpack), 
+                                   compute_identity, unpack_input=unpack)
             # If not, compute and insert
             else:
                 print('No result found in the database for identity')
-                results = identify(fn(*args, **kwargs), compute_identity, unpack_input=unpack)
+                # If unpacking is on we need to be able to trace where the elements come from
+                if unpack:
+                    db._insert(compute_identity, None, None, save_data=False)
+ 
+                results = identify(fn(*args, **kwargs),
+                                   compute_identity, unpack_input=unpack)
                 db.insert(results, save_func, unpack_input=unpack)
 
             return results
@@ -118,10 +122,10 @@ class Processor(object):
         # YEs, we should still be able to do lazy evaluation
         class_name = self.__class__.__name__
         self.identity = Identity(class_name, *args, **kwargs)
-        
-        fd = db.find(self.identity)
-        if fd is None:
-            db.insert(self, None, save_data=False)
+        if db is not None: 
+            fd = db.find(self.identity)
+            if fd is None:
+                db.insert(self, None, save_data=False)
 
 
     # Those wrapper will require that all args and kwargs be hashable, which is why my classes are going
@@ -130,7 +134,7 @@ class Processor(object):
         return self.identity.__id_hash__()
  
 # TODO : no need to implement this? Just need to make sure that the state of the object that changes is serialized
-def change_state(fn):
+def change_state(fn, load_func=None, save_func=None):
     @wraps(fn)
     def inner_fn(self, *args, **kwargs):
         assert issubclass(type(self), Processor)
@@ -139,11 +143,29 @@ def change_state(fn):
 
         self.identity = Identity(class_name+class_method_name, *args, **kwargs)
         
+        db = db_context.get_db()
+        if db is None:
+            return fn(self, *args, **kwargs)
+
+
+
         fd = db.find(self.identity)
         if fd is None:
-            db.insert(self.identity, None, None, save_data=False)
- 
-        return fn(*args, **kwargs)
+            print('In here')
+            if save_func is not None and load_func is not None:
+                print('save_func defined')
+                results = fn(*args, **kwargs)
+                db.insert(self, save_func, save_data=True)
+            else:
+                print('save_func not defined')
+                db._insert(self.identity, None, None, save_data=False)
+        else:
+            print('No result found in the database for identity')
+            # TODO : We should account for the case when the state changes AND we return some data. In that case both need to be identified / saved
+            results = fn(self, *args, **kwargs)
+            db._insert(self.identity, None, None, save_data=False)
+
+        return fn(self, *args, **kwargs)
     return inner_fn
 
 

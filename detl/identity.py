@@ -32,7 +32,6 @@ class Identity(object):
             obj = self
 
         id_dict = {'name' : self.name, 'args' : self.args, 'kwargs' : self.kwargs}
-        print(id_dict)
         return h11(json.dumps(id_dict, sort_keys=True, default=to_serializable ))
 
     def to_dict(self, db=None):
@@ -53,18 +52,13 @@ class Identity(object):
 def to_serializable(val, db = None):
     """Used by default."""
     # TODO : keep this or find a more elegant way that works both for objects and dict
-    print('Serializing', val)
     hash_val = val.__id_hash__()
     return hash_val
 
 def to_obj_id(hash_val, db=None):
-    print(hash_val)
     if db is not None:
         res = db.find_from_hash(hash_val)
-        print(res)
-        print('Yodledel')
         if res is not None:
-            print(res['_id'])
             return ObjectId(res['_id'])
     return hash_val
 
