@@ -99,16 +99,21 @@ def identity_wrapper(fn):
     def ided_fn(*args, **kwargs):
 
         compute_identity = Identity(fn.__name__, *args, **kwargs)
+        print('ID wrp')
+        print(fn.__name__)
+        print([arg.__id_hash__() for arg in args])
+        print(compute_identity.__id_hash__())
         results = identify(fn(*args, **kwargs), compute_identity)
         db = db_context.get_db()
         if db is None:
             return results
-
+        
         fd = db.find(compute_identity)
         if fd is None:
             db.insert(results, None, save_data=False)
         return results
     return ided_fn
+
 
 class Processor(object):
 
@@ -140,30 +145,30 @@ def change_state(fn, load_func=None, save_func=None):
         assert issubclass(type(self), Processor)
         class_name = self.__class__.__name__
         class_method_name = fn.__name__
+        
+        old_identity = self.identity
 
-        self.identity = Identity(class_name+class_method_name, *args, **kwargs)
+        obj_args = (old_identity,)+tuple(args)
+        self.identity = Identity(class_name+class_method_name, *obj_args, **kwargs)
         
         db = db_context.get_db()
         if db is None:
             return fn(self, *args, **kwargs)
 
-
-
         fd = db.find(self.identity)
         if fd is None:
-            print('In here')
             if save_func is not None and load_func is not None:
                 print('save_func defined')
-                results = fn(*args, **kwargs)
+                results = fn(self, *args, **kwargs)
                 db.insert(self, save_func, save_data=True)
             else:
                 print('save_func not defined')
                 db._insert(self.identity, None, None, save_data=False)
         else:
-            print('No result found in the database for identity')
             # TODO : We should account for the case when the state changes AND we return some data. In that case both need to be identified / saved
-            results = fn(self, *args, **kwargs)
-            db._insert(self.identity, None, None, save_data=False)
+            pass
+            #results = fn(self, *args, **kwargs)
+            #db._insert(self.identity, None, None, save_data=False)
 
         return fn(self, *args, **kwargs)
     return inner_fn

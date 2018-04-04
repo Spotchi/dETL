@@ -1,0 +1,5 @@
+[
+  "tests/test_processors.py::DecoratorTest::test_change_state",
+  "tests/test_processors.py::DecoratorTest::test_identify",
+  "tests/test_processors.py::DecoratorTest::test_save_and_load"
+]

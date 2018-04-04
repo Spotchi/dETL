@@ -1,0 +1,3 @@
+{
+  "tests/test_processors.py::DecoratorTest::test_change_state": true
+}

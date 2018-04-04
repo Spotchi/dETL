@@ -22,15 +22,15 @@ def db_client(config_path='configs/db.json'):
     return MyDb(host, port, db, collection, data_folder)
 
 
-class MyDb():
+class MyDb(object):
 
     def __init__(self, host, port, db, collection, data_folder):
-        # TODO : Get mongodb configuration from config folder
-        self.client = MongoClient('localhost', 27017)
-        self.db = self.client.etl_test_database
-        self.coll = self.db.test_pipeline
+
+        self.client = MongoClient(host, port)
+        self.db = getattr(self.client, db)
+        self.coll = getattr(self.db, collection)
     
-        self.data_folder = 'data'
+        self.data_folder = data_folder
 
         # TODO : in the future, split the find into two cases : whether the file is available or not (in that case, can download)
 
@@ -108,7 +108,7 @@ class MyDb():
 
         return db_context.get_controller(self)
 
-    def browse(fn_name, origin={}):
+    def browse(self, fn_name, origin={}):
         '''
         browse('processor_2')
         browse('processor_2', {'source':{}, 'Preprocessor':{'kwargs':{'num_mul': 50}}})
@@ -121,6 +121,9 @@ class MyDb():
                 yield res
             else:
                 recursive_find(res, origin)
+    
+    def drop_all(self):
+        self.coll.drop()
 
 '''
 db.test_pipeline.aggregate(
