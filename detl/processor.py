@@ -52,50 +52,8 @@ def load_and_save(load_func, save_func, unpack=False):
     return fn_wrapper
 
 
-# TODO : some refactoring to allow identification and 
-def unpack_save(load_func, save_func, num_outputs):
-    def fn_wrapper(fn):
-        @wraps(fn)
-        def identified_fn(*args, **kwargs):
-            # Get identity of computation using the object's identity and method name and arguments
-            compute_identity = Identity(fn.__name__, *args, **kwargs)
-            all_identities = [Identity('unpack', [compute_identity, i], {}) for i in range(num_outputs)]
-            # Verify if hash exists
-            # If hash is in db, get filedescriptor and load
-            db = db_context.get_db()
-            if db is None:
-                return fn(*args, **kwargs)
-
-            results = []
-            missing = False
-            # for idx, identity in enumerate(all_identities):
-            #     fd = db.find_file(identity)
-            #
-            #     if fd is not None:
-            #         print('Loading from {}'.format(fd))
-            #         results.append(identify(load_func(fd), identity))
-            # # If not, compute and insert
-            #     else:
-            #         missing = True
-            #         break
-            # TODO : do something about that, 
-            # Need to think about how the loading goes for this kind of function. For black box unpacked functions, there is not 
-            # much to be done but for map reduce we can check them individually
-            # TODO : framework for map reduce jobs
-            #if missing:
-            results = fn(*args, **kwargs)
-            id_res = []
-            for idx, res in enumerate(results):
-                ided_res = identify(res, all_identities[idx])
-                id_res.append(ided_res)
-                db.insert(ided_res, save_func)
-
-            return tuple(id_res)
-        return identified_fn
-    return fn_wrapper
-
-
 def identity_wrapper(fn):
+    @wraps(fn)
     def ided_fn(*args, **kwargs):
 
         compute_identity = Identity(fn.__name__, *args, **kwargs)

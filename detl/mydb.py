@@ -125,10 +125,58 @@ class MyDb(object):
     def drop_all(self):
         self.coll.drop()
 
+    def list_results(self, fn_name):
+        return self.coll.find({'name': fn_name})
+
+    def has_ancestor(self, obj, query):
+        query_results = list(self.coll.find(query))
+        print(list(query_results)) 
+        print(obj)
+        print([res for res in query_results])
+        if str(obj['_id']) in [str(res['_id']) for res in query_results]:
+            return True
+
+        for arg in obj['args']:
+            if type(arg) is ObjectId:
+                ancestor_path = self.has_ancestor(self.find_id(arg), query)
+                if ancestor_path:
+                    return True
+
+        for kw, kwar in obj['kwargs'].items():
+            print(kwar)
+            if type(kwar) is ObjectId:
+                ancestor_path = self.has_ancestor(self.find_id(kwar), query)
+                if ancestor_path:
+                    return True
+    
+        return False
+
+
+    def recursive_get(self, res_metadata):
+        
+        full_metadata = {'_id': res_metadata['_id'], 'config_hash': res_metadata['config_hash'],
+                'args': [], 'kwargs': {}, 'name': res_metadata['name']}
+
+        for arg in res_metadata['args']:
+            if type(arg) is ObjectId:
+                arg_metadata = self.find_id(arg)
+                full_metadata['args'].append(self.recursive_get(arg_metadata))
+
+        for kw, kwar in res_metadata['kwargs'].items():
+            if type(kwar) is ObjectId:
+                kw_metadata = self.find_id(kwar)
+                full_metadata['kwargs'][kw] = self.recursive_get(kw_metadata)
+            else:
+                full_metadata['kwargs'][kw] = kwar
+    
+        return full_metadata
+
+    def find_id(self, obj_id):
+        return self.coll.find_one({'_id': obj_id})
 '''
 db.test_pipeline.aggregate(
-[
-{"$graphLookup": {"from": "test_pipeline",
+
+{"$graphLookup": {"f rom": "test_pipeline",
 "startWith": "$args",
 "connectFromField": "args",
 "connectToField" : "_id",
@@ -145,6 +193,19 @@ db.test_pipeline.aggregate(
                 } 
             }
         }}];
+
+Interface : 
+
+all_res = db.list_results('confusion_matrix')
+filt_res = db.filter_results(filt_lambda)
+best_res = db.argmax(all_res, lam_func(low, high))
+
+dep_tree = db.recursive_agg(best_res)
+
+
+
+
+
 '''
 
 
