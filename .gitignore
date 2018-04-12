@@ -113,3 +113,8 @@ ENV/
 
 # data
 data/
+
+# test data
+tests/dummy_data
+
+.pytest_cache

@@ -8,6 +8,7 @@ from detl.db_context import db_context
 import json
 import logging
 from detl.identity import Identity
+
 def db_client(config_path='configs/db.json'):
 
     with open(config_path) as fd:
@@ -66,6 +67,16 @@ class MyDb(object):
         else:
             self._insert(results.identity, results, save_func, save_data=save_data)
 
+    def insert_wrap(self, wrapper, save_func, save_data=True, unpack_input=False):
+        #if unpack_input:
+        #    for res in results:
+        #        self._insert(res.identity, res, save_func, save_data=save_data)
+        #else:
+        if save_data:
+            self._insert(wrapper.identity, wrapper.data, save_func, save_data=save_data)
+        else:
+            self._insert(wrapper.identity, None, save_func, save_data=save_data)
+
 
     def _insert(self, identity, results, save_func, save_data=True):
         
@@ -74,7 +85,7 @@ class MyDb(object):
         identity_dict = identity.to_dict(db=self)
         
         # If save_data
-        if save_data:
+        if save_data and (save_func is not None):
             # Create a file path
             file_path = self.create_fd(identity)
             # TODO : handle errors
@@ -107,20 +118,6 @@ class MyDb(object):
     def as_default(self):
 
         return db_context.get_controller(self)
-
-    def browse(self, fn_name, origin={}):
-        '''
-        browse('processor_2')
-        browse('processor_2', {'source':{}, 'Preprocessor':{'kwargs':{'num_mul': 50}}})
-
-        '''
-        # TODO : write the origins as a dictionary with $and in mongo syntax
-        results = self.coll.find({'name': fn_name})
-        for res in results:
-            if res in origin:
-                yield res
-            else:
-                recursive_find(res, origin)
     
     def drop_all(self):
         self.coll.drop()
@@ -130,9 +127,6 @@ class MyDb(object):
 
     def has_ancestor(self, obj, query):
         query_results = list(self.coll.find(query))
-        print(list(query_results)) 
-        print(obj)
-        print([res for res in query_results])
         if str(obj['_id']) in [str(res['_id']) for res in query_results]:
             return True
 

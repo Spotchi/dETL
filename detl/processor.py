@@ -2,75 +2,41 @@ import numpy as np
 import json
 import abc
 from functools import wraps
-from detl.identity import Identity, identify
+from detl.identity import Identity 
+from detl.wrapper import wrap_results, get_data
 from detl.db_context import db_context
-
-def load(load_fn, fd, unpack=False):
-
-    if unpack:
-        return [load_fn(sfd) for sfd in fd]
-
-    return load_fn(fd)
 
 
 def load_and_save(load_func, save_func, unpack=False):
     def fn_wrapper(fn):
         @wraps(fn)
         def identified_fn(*args, **kwargs):
-            # Get identity of computation using the object's identity and method name and arguments
-            compute_identity = Identity(fn.__name__, *args, **kwargs, unpack=unpack)
-
-            # Verify if hash exists
-            # If hash is in db, get filedescriptor and load
+            # Check if the database exists and whether or not we need to wrap the results
             db = db_context.get_db()
-            
             if db is None:
-                return identify(fn(*args, **kwargs), unpack=unpack)
+                return fn(*args, **kwargs)
+
+            # Wrap results
+            results_wrapped = wrap_results(fn, args, kwargs, unpack_input=unpack, save_fn=save_func, load_fn=load_func)
             
-            # TODO : Where to get the length from?
-            fd = db.find_file(compute_identity, unpack_input=unpack, unpack_len=4)
-
-            # Either fd is not none for the base case or none of the unpacked fd is None
-            if (fd is not None and not unpack) or \
-                (unpack and not any(el is None for el in fd)):
-                print('Loading from {}'.format(fd))
-                results = identify(load(load_func, fd, unpack=unpack), 
-                                   compute_identity, unpack_input=unpack)
-            # If not, compute and insert
-            else:
-                print('No result found in the database for identity')
-                # If unpacking is on we need to be able to trace where the elements come from
-                if unpack:
-                    db._insert(compute_identity, None, None, save_data=False)
- 
-                results = identify(fn(*args, **kwargs),
-                                   compute_identity, unpack_input=unpack)
-                db.insert(results, save_func, unpack_input=unpack)
-
-            return results
+            return results_wrapped
         return identified_fn
     return fn_wrapper
 
 
-def identity_wrapper(fn):
-    @wraps(fn)
-    def ided_fn(*args, **kwargs):
+def identity_wrapper(unpack=False):
+    def fn_wrapper(fn):
+        @wraps(fn)
+        def ided_fn(*args, **kwargs):
 
-        compute_identity = Identity(fn.__name__, *args, **kwargs)
-        print('ID wrp')
-        print(fn.__name__)
-        print([arg.__id_hash__() for arg in args])
-        print(compute_identity.__id_hash__())
-        results = identify(fn(*args, **kwargs), compute_identity)
-        db = db_context.get_db()
-        if db is None:
-            return results
-        
-        fd = db.find(compute_identity)
-        if fd is None:
-            db.insert(results, None, save_data=False)
-        return results
-    return ided_fn
+            db = db_context.get_db()
+            if db is None:
+                return fn(*args, **kwargs)
+            
+            results_wrapped = wrap_results(fn, args, kwargs, unpack_input=unpack)
+            return results_wrapped
+        return ided_fn
+    return fn_wrapper
 
 
 class Processor(object):
@@ -81,21 +47,16 @@ class Processor(object):
         This class is merely a different way of implementing the ETL class. Here the functions and arguments are defined by the programmer coding directly in the extending class
         '''
         db = db_context.get_db()
-        # TODO : Should compute the hashes for all the args and the kwargs???
-        # YEs, we should still be able to do lazy evaluation
+
         class_name = self.__class__.__name__
         self.identity = Identity(class_name, *args, **kwargs)
-        if db is not None: 
+        if db is not None:
             fd = db.find(self.identity)
             if fd is None:
                 db.insert(self, None, save_data=False)
 
-
-    # Those wrapper will require that all args and kwargs be hashable, which is why my classes are going
-    # extend Processor, whose main role will be to keep a hash
     def __id_hash__(self):
         return self.identity.__id_hash__()
- 
 # TODO : no need to implement this? Just need to make sure that the state of the object that changes is serialized
 def change_state(fn, load_func=None, save_func=None):
     @wraps(fn)
@@ -111,13 +72,18 @@ def change_state(fn, load_func=None, save_func=None):
         
         db = db_context.get_db()
         if db is None:
-            return fn(self, *args, **kwargs)
+            get_args = [get_data(el) for el in args]
+            get_kwargs = {k:get_data(v) for k,v in kwargs.items()}
+            return fn(self, *get_args, **get_kwargs)
 
         fd = db.find(self.identity)
         if fd is None:
             if save_func is not None and load_func is not None:
                 print('save_func defined')
-                results = fn(self, *args, **kwargs)
+                get_args = [get_data(el) for el in args]
+                get_kwargs = {k:get_data(v) for k,v in kwargs.items()}
+
+                results = fn(self, *get_args, **get_kwargs)
                 db.insert(self, save_func, save_data=True)
             else:
                 print('save_func not defined')
@@ -127,8 +93,11 @@ def change_state(fn, load_func=None, save_func=None):
             pass
             #results = fn(self, *args, **kwargs)
             #db._insert(self.identity, None, None, save_data=False)
+        get_args = [get_data(el) for el in args]
+        get_kwargs = {k:get_data(v) for k,v in kwargs.items()}
 
-        return fn(self, *args, **kwargs)
+
+        return fn(self, *get_args, **get_kwargs)
     return inner_fn
 
 

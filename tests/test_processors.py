@@ -6,8 +6,7 @@ import os
 from test_util import save_int, load_int
 import unittest
 import pytest
-from detl.data_wrap import DatasetWrapper
-from detl.identity import identify
+from detl.wrapper import wrap_obj, wrap_results
 
 class DecoratorTest(unittest.TestCase):
 
@@ -39,22 +38,26 @@ class DecoratorTest(unittest.TestCase):
             print('executint')
             pytest.execution_count += 1
 
-            return DatasetWrapper(first_int.data * second_int.data)
+            return first_int * second_int
 
         with self.db.as_default():
-            a = DatasetWrapper(4)
-            a = identify(a, '4')
-            c = DatasetWrapper(11)
-            c = identify(c, '11')
+            a = 4
+            c = 11
 
             ac = multiply_by(a, c)
+            assert pytest.execution_count == 0
+            ac_res = ac.data
             assert pytest.execution_count == 1
+            assert ac_res == 44
             ac = multiply_by(a, c)
+            ac_res = ac.data
             assert pytest.execution_count == 1
-            
-            b = DatasetWrapper(5)
-            b = identify(b, '5')
+            assert ac_res == 44
+
+            b = 5
             bc = multiply_by(b, c)
+            assert pytest.execution_count == 1
+            bc.data
             assert pytest.execution_count == 2
 
         self.db.drop_all()
@@ -88,18 +91,17 @@ class DecoratorTest(unittest.TestCase):
             @load_and_save(load_int, save_int)
             def multiply_by(self, other_int):
 
-                return DatasetWrapper(self.number * other_int.data)
+                return self.number * other_int
 
         with self.db.as_default():
 
             mod = DummyModel(46)
 
-            a = DatasetWrapper(2)
-            a = identify(a, '2')
+            a = 2
             
-            print(mod.multiply_by(a))
+            print(mod.multiply_by(a).data)
             mod.set_num(20)
-            print(mod.multiply_by(a))
+            print(mod.multiply_by(a).data)
 
 #        self.db.drop_all()
         assert False
