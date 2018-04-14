@@ -38,7 +38,7 @@ transformation as follows.
 ```python
 import pandas as pd
 from detl.processor import load_and_save
-from detl.identity import identify
+from detl.wrapper import wrap_obj
 
 @load_and_save(pd.read_csv, pd_to_csv)
 def multiply_by(x, y):
@@ -53,9 +53,10 @@ to identify the source first.
 
 ```df = pd.DataFrame(np.arange(12).reshape(3,4),
                   columns=['A', 'B', 'C', 'D'])
-df_ided = identify(df, 'data source')
+with db_client().as_default():
+    df_ided = wrap_obj(df, 'data source')
 
-mult = multiply_by(df_ided, 5)
+    mult = multiply_by(df_ided, 5)
 ```
 
 The second time we run it, if the arguments are the same the result will be loaded from the
@@ -84,13 +85,21 @@ with sample_db.as_default():
 ```
 The code above creates a connection using the default config file for the db, configs/db.json
 
+Here is a sample config file for the database. It specifies the path to your data folder and the
+connection information to your database and collection.
+
+```json
+{
+    "host": "localhost",
+    "port": 27017,
+    "db": "etl_test_database",
+    "collection": "mnistdetl",
+    "data_folder": "data"
+}
+```
+
 Planned features
 ----------------
-* Lazy evaluation of decorated functions using a lazy flag context manager, and adding a .forward()
-  method to outputs of all decorated methods
 * Template for datasets where the decorated function are applied to every element of a dataset
-* Browse function
-* Template CLIs that take function name as argument
 * Visualize computation tree
-* Test to check that saved items correspond to function
 * Computer vision and time series use cases
