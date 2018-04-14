@@ -51,7 +51,8 @@ def pd_to_csv(df, filename):
 Now if we execute the operation once, the multiplication will be saved to the database, but we need
 to identify the source first.
 
-```df = pd.DataFrame(np.arange(12).reshape(3,4),
+```python
+df = pd.DataFrame(np.arange(12).reshape(3,4),
                   columns=['A', 'B', 'C', 'D'])
 with db_client().as_default():
     df_ided = wrap_obj(df, 'data source')
