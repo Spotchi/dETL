@@ -1,6 +1,5 @@
-from detl.processor import load_and_save, identity_wrapper, Processor, change_state
+from detl.api.processor import load_and_save, identity_wrapper, Processor, change_state
 from sklearn import svm, metrics
-import numpy as np
 import pandas as pd
 from io_utils import pd_to_csv
 

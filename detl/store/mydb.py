@@ -1,13 +1,10 @@
 import datetime
 import os
-import pymongo
-import hashlib
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from detl.db_context import db_context
+from detl.store.store_context import store_context
 import json
-import logging
-from detl.identity import Identity
+from detl.core.identity import Identity
 
 def db_client(config_path='configs/db.json'):
 
@@ -117,7 +114,7 @@ class MyDb(object):
         
     def as_default(self):
 
-        return db_context.get_controller(self)
+        return store_context.get_controller(self)
     
     def drop_all(self):
         self.coll.drop()

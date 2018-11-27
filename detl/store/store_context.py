@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 
-class DbStack():
+
+class StoreStack():
 
     def __init__(self):
 
@@ -22,8 +23,8 @@ class DbStack():
                     raise AssertionError(
                     "Nesting violated for default stack of %s objects" %
                     type(default))
-                    self.stack.pop()
-                else:
-                    self.stack.remove(default)
+                self.stack.pop()
+            else:
+                self.stack.remove(default)
 
-db_context = DbStack()
+store_context = StoreStack()

@@ -1,4 +1,4 @@
-from detl.mydb import db_client
+from detl.store.mydb import db_client
 from detl.wrapper import Wrapper
 from pprint import pprint
 

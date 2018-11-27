@@ -1,4 +1,4 @@
-from detl.processor import load_and_save, identity_wrapper
+from detl.api.processor import load_and_save, identity_wrapper
 import matplotlib.pyplot as plt
 import random
 from sklearn.datasets import load_digits

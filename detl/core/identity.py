@@ -1,17 +1,17 @@
-import types
 import json
-import hashlib
-import copy
-from functools import singledispatch, partial
-from detl.db_context import db_context
+from functools import singledispatch
 from bson.objectid import ObjectId
-from bson.json_util import dumps, loads
 from inspect import getmodule
+from enum import Enum
 
-def h11(text):
-    '''The hash used for the serialized configurations'''
-    b = hashlib.md5(text.encode()).hexdigest()[:9]
-    return int(b, 16)
+from detl.utils.hash import h11
+
+
+class IdentityType(Enum):
+    FN_ARGS = 'fn_args'
+    PRODUCT = 'product'
+    VALUE = 'value'
+
 
 class Identity(object):
 
@@ -40,7 +40,7 @@ class Identity(object):
             obj = self
 
         id_dict = {'name' : self.name, 'args' : self.args, 'kwargs' : self.kwargs, 'load_fn':self.load_dict, 'save_fn': self.save_dict}
-        return h11(json.dumps(id_dict, sort_keys=True, default=to_serializable ))
+        return h11(json.dumps(id_dict, sort_keys=True, default=to_serializable))
 
     def to_dict(self, db=None):
         '''Create a serializable version of the configuration'''

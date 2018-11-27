@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 import json
 from io_utils import pd_to_csv, json_dump
-from detl.processor import Processor, load_and_save, change_state
-from detl.identity import Identity, identify
-from detl.mydb import MyDb, db_client
+from detl.api.processor import Processor, load_and_save, change_state
+from detl.core.identity import identify
+from detl.store.mydb import db_client
 
 class PreProcessor(Processor):
 

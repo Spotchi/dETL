@@ -1,4 +1,4 @@
-from detl.mydb import db_client
+from detl.store.mydb import db_client
 from pprint import pprint
 
 db = db_client()

@@ -1,12 +1,11 @@
-import detl
-from detl.processor import load_and_save, identity_wrapper, Processor, change_state
-from detl.mydb import MyDb
+from detl.api.processor import load_and_save, Processor, change_state
+from detl.store.mydb import MyDb
 import shutil
 import os
 from test_util import save_int, load_int
 import unittest
 import pytest
-from detl.wrapper import wrap_obj, wrap_results
+
 
 class DecoratorTest(unittest.TestCase):
 

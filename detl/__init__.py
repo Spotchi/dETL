@@ -1,3 +1,3 @@
-import detl.identity
-import detl.processor
-import detl.mydb
+import detl.core.identity
+import detl.api.processor
+import detl.store.mydb
