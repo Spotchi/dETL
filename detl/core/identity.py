@@ -1,6 +1,6 @@
 import json
 from functools import singledispatch
-from bson.objectid import ObjectId
+# from bson.objectid import ObjectId
 from inspect import getmodule
 from enum import Enum
 
@@ -24,12 +24,12 @@ class Identity(object):
         self.args = args
         self.kwargs = kwargs
 
-        self.save_fn = save_fn
-        self.save_dict = { 'fn_name': save_fn.__name__,
-                'fn_module': getmodule(save_fn).__name__} if save_fn else None
-        self.load_dict = {'fn_name': load_fn.__name__,
-                'fn_module': getmodule(load_fn).__name__} if load_fn else None
-        self.load_fn = load_fn
+        # self.save_fn = save_fn
+        # self.save_dict = { 'fn_name': save_fn.__name__,
+        #         'fn_module': getmodule(save_fn).__name__} if save_fn else None
+        # self.load_dict = {'fn_name': load_fn.__name__,
+        #         'fn_module': getmodule(load_fn).__name__} if load_fn else None
+        # self.load_fn = load_fn
         
     def __id_hash__(self, obj=None):
         '''
@@ -39,7 +39,8 @@ class Identity(object):
         if obj is not self:
             obj = self
 
-        id_dict = {'name' : self.name, 'args' : self.args, 'kwargs' : self.kwargs, 'load_fn':self.load_dict, 'save_fn': self.save_dict}
+        id_dict = {'name' : self.name, 'args' : self.args, 'kwargs' : self.kwargs}
+                   # 'load_fn':self.load_dict, 'save_fn': self.save_dict}
         return h11(json.dumps(id_dict, sort_keys=True, default=to_serializable))
 
     def to_dict(self, db=None):
@@ -79,7 +80,7 @@ def to_obj_id(hash_val, db=None):
     if db is not None:
         res = db.find_from_hash(hash_val)
         if res is not None:
-            return ObjectId(res['_id'])
+            return res['_id'] #ObjectId(res['_id'])
     return hash_val
 
 

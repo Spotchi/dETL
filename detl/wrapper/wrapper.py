@@ -1,5 +1,7 @@
+from detl.core.identity import Identity, SourceIdentity
 from detl.store.store_context import store_context
 from detl.core.result import Result
+from detl.core.run import Run
 import numbers
 from enum import Enum
 
@@ -32,21 +34,25 @@ class Wrapper(object):
         if identity is None:
             data = self._run()
             store.add_result(self.identity, data)
-            return Result(data, self.identity)
+            return Run(None, data, self.identity)
 
         # If there is a matching identity (there might not be a value in the result)
         if store.has_value(identity):
-            return Result(store.get_value(identity), identity)
+            return Run(None, store.get_value(identity), identity)
 
         data = self._run()
         store.add_result(self.identity, data)
-        return Result(data, self.identity)
+        return Run(None, data, self.identity)
 
     # def flatMap(self, input_wrapper, f_a_Wrap_b):
     #     return Wrapper(lambda: f_a_Wrap_b(input_wrapper.run()))
     #
-    # def map(self, input_wrapper, f_a_b):
-    #     return Wrapper(lambda: f_a_b)
+    # TODO : this is the way I'll get things done but I need Wrapper to take a function
+    # that returns a Run as input
+    # def rg_map(self, rg_a_b):
+    #     def _run():
+    #         return rg_a_b.compute(self.input_wrapper.run())
+    #     return Wrapper(_run)
 
     @classmethod
     def from_hash(cls, config_hash):
@@ -71,6 +77,7 @@ class Wrapper(object):
         return wrap
 
 
+# TODO : There might not be a need for this class, may just implement a map with ResGroup as fn instead
 class FunctionWrapper(Wrapper):
 
     def __init__(self, res_group, input_wrapper):
@@ -98,14 +105,35 @@ class Product(Wrapper):
 
         self._data = None
 
+    def _run(self):
+        computed_args = tuple(conditional_compute(arg) for arg in self._args)
+        self._data = computed_args
+
+        return Run(None, self._data, self._identity)
+
+
+# TODO : More like a Python product
+class ArgsProduct(Wrapper):
+
+    def __init__(self, *args, **kwargs):
+        for arg in args:
+            assert is_acceptable_type(arg)
+
+        self._args = args
+        self._kwargs = kwargs
+
+        self._identity = identity_product(*args, **kwargs)
+
+        self._data = None
+
 
     def _run(self):
-        computed_args = [conditional_compute(arg) for arg in self._args]
+        computed_args = (conditional_compute(arg) for arg in self._args)
         computed_kwargs = {k: conditional_compute(v) for k, v in self._kwargs.items()}
         # TODO : this bit should be in ProductResultGroup's compute
         self._data = (computed_args, computed_kwargs)
 
-        return Result(self._data, self._identity)
+        return Run(None, self._data, self._identity)
 
 
 def unpack_wrapper(input_wrapper, unpack):
@@ -125,36 +153,29 @@ class IndexWrapper(Wrapper):
         computed_arg = conditional_compute(self.input_wrapper)
         self._data = computed_arg[self._index]
 
-        return self._data
-
-
-class FunctionWrapper(Wrapper):
-
-    def _run(self):
-        comp_args = conditional_compute(self.input_wrapper)
-        self._data = self.res_group.compute(comp_args)
-        return self._data
-
+        return Run(None, self._data, self._identity)
 
 
 class Returner(Wrapper):
 
     def __init__(self, data, namespace):
         self.data = data
-        self.namespace = namespace
-        self._identity = Identity.from_namespace()
-        super(Returner, self).__init__(ReturnGroup(namespace))
+        self._identity = SourceIdentity(namespace)
+        if not is_acceptable_type(data):
+            raise ValueError("{data} must be of an acceptable type : {acc}".format(data=data, acc=ACCEPTABLE_TYPES))
+        # TODO : check that input is an acceptable type (otherwise need to provide a namespace
+        super(Returner, self).__init__()
 
     def identity(self):
         return self._identity
 
     def _run(self, version_info=None):
-        return Result(self.data, self._identity)
+        return Run(None, self.data, self._identity)
 
     def run(self):
         return self._run()
 
-# # This is actually the Function wrapper
+# I should actually implement this as a variant of Run for trampolining
 # class Flatmap(Wrapper):
 #
 #     def __init__(self, wrapper_in, f):
@@ -169,7 +190,7 @@ class Returner(Wrapper):
 
 def conditional_compute(obj):
     if isinstance(obj, Wrapper):
-        return obj.run()._value
+        return obj.run()._data
     if (type(obj) is str) or isinstance(obj, numbers.Numbers):
         return obj
 
@@ -187,16 +208,19 @@ def conditional_identity(obj):
 
 def identity_product(*args, **kwargs):
 
-    id_dict = {'name': 'product', 'args': args, 'kwargs': kwargs}
+    id_dict = {'name': 'product', 'args': [conditional_identity(arg) for arg in args],
+               'kwargs': {k: conditional_identity(v) for  k, v in kwargs.items()}}
 
-    return ResultIdentity.product(id_dict)
+    return id_dict
 
 def identity_index(input_id, index):
 
-    return IndexResultIdentity(input_id, index)
+    return {'name': 'index{}'.format(index), 'args':input_id}
 
+ACCEPTABLE_TYPES = [Wrapper, numbers.Number, str]
 
 def is_acceptable_type(obj):
+    # TODO : test this using Acceptable types
     return isinstance(obj, Wrapper) or \
         type(obj) is str or \
         isinstance(obj, numbers.Number)
