@@ -1,6 +1,5 @@
 from detl.core.identity import Identity, SourceIdentity
 from detl.store.store_context import store_context
-from detl.core.result import Result
 from detl.core.run import Run
 import numbers
 from enum import Enum
@@ -12,7 +11,7 @@ class WrapperType(Enum):
     INDEX = 'index'
 
 
-class Wrapper(object):
+class ResultWrapper(object):
 
     def __init__(self):
         pass
@@ -33,7 +32,7 @@ class Wrapper(object):
         identity = store.get_result(self.identity, version_info)
         if identity is None:
             data = self._run()
-            store.add_result(self.identity, data)
+            store.create_run(data)
             return Run(None, data, self.identity)
 
         # If there is a matching identity (there might not be a value in the result)
@@ -57,7 +56,7 @@ class Wrapper(object):
     @classmethod
     def from_hash(cls, config_hash):
 
-        wrap = Wrapper(int, [], {})
+        wrap = ResultWrapper(int, [], {})
         db = store_context.get_db()
         if db is None:
             raise ValueError('No db, cannot build wrapper form hash')
@@ -78,7 +77,7 @@ class Wrapper(object):
 
 
 # TODO : There might not be a need for this class, may just implement a map with ResGroup as fn instead
-class FunctionWrapper(Wrapper):
+class FunctionResultWrapper(ResultWrapper):
 
     def __init__(self, res_group, input_wrapper):
         self.res_group = res_group
@@ -92,7 +91,7 @@ class FunctionWrapper(Wrapper):
         return self.res_group.compute(self.input_wrapper.run())
 
 
-class Product(Wrapper):
+class Product(ResultWrapper):
 
     def __init__(self, *args, **kwargs):
         for arg in args:
@@ -113,7 +112,7 @@ class Product(Wrapper):
 
 
 # TODO : More like a Python product
-class ArgsProduct(Wrapper):
+class ArgsProduct(ResultWrapper):
 
     def __init__(self, *args, **kwargs):
         for arg in args:
@@ -139,10 +138,10 @@ class ArgsProduct(Wrapper):
 def unpack_wrapper(input_wrapper, unpack):
     assert unpack > 0
     for idx in range(unpack):
-        yield IndexWrapper(input_wrapper, idx)
+        yield IndexResultWrapper(input_wrapper, idx)
 
 
-class IndexWrapper(Wrapper):
+class IndexResultWrapper(ResultWrapper):
 
     def __init__(self, input_wrapper, index):
         self.input_wrapper = input_wrapper
@@ -156,7 +155,7 @@ class IndexWrapper(Wrapper):
         return Run(None, self._data, self._identity)
 
 
-class Returner(Wrapper):
+class Returner(ResultWrapper):
 
     def __init__(self, data, namespace):
         self.data = data
@@ -189,7 +188,7 @@ class Returner(Wrapper):
 # Wrapper is a computation as applied to an input
 
 def conditional_compute(obj):
-    if isinstance(obj, Wrapper):
+    if isinstance(obj, ResultWrapper):
         return obj.run()._data
     if (type(obj) is str) or isinstance(obj, numbers.Numbers):
         return obj
@@ -198,9 +197,9 @@ def conditional_compute(obj):
 
 
 def conditional_identity(obj):
-    if isinstance(obj, Wrapper):
+    if isinstance(obj, ResultWrapper):
         return obj._identity
-    if (type(obj) is str) or isinstance(obj, numbers.Numbers):
+    if (type(obj) is str) or isinstance(obj, numbers.Number):
         return obj
 
     raise ValueError("Cannot get identiy of object with type : {}".format(type(obj)))
@@ -217,10 +216,10 @@ def identity_index(input_id, index):
 
     return {'name': 'index{}'.format(index), 'args':input_id}
 
-ACCEPTABLE_TYPES = [Wrapper, numbers.Number, str]
+ACCEPTABLE_TYPES = [ResultWrapper, numbers.Number, str]
 
 def is_acceptable_type(obj):
     # TODO : test this using Acceptable types
-    return isinstance(obj, Wrapper) or \
-        type(obj) is str or \
-        isinstance(obj, numbers.Number)
+    return isinstance(obj, ResultWrapper) or \
+           type(obj) is str or \
+           isinstance(obj, numbers.Number)

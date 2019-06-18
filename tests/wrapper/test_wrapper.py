@@ -1,6 +1,6 @@
 import unittest
-from detl.wrapper.wrapper import Wrapper, Returner, FunctionWrapper, Product, unpack_wrapper
-from detl.core.result_group import ResultGroup, ResultFunction
+from detl.core.resultwrapper import Returner, FunctionResultWrapper, Product, unpack_wrapper
+from detl.core.result_group import ResultFunction
 from detl.core.saving import FileSaver
 
 
@@ -26,7 +26,7 @@ class TestWrapper(unittest.TestCase):
         w_a = Returner(a, 'a')
         rg = ResultFunction(mult_2, FileSaver(), '2_multiplier')
         # TODO : this is map function
-        w_b = FunctionWrapper(rg, w_a)
+        w_b = FunctionResultWrapper(rg, w_a)
         res_b = w_b.run()
         res_b_data = res_b._data
 
@@ -75,8 +75,8 @@ class TestWrapper(unittest.TestCase):
             return str + ' universe'
 
         rg = ResultFunction(append_universe, FileSaver(), 'uni')
-        w_hel = FunctionWrapper(rg, w_first)
-        w_wha = FunctionWrapper(rg, w_sec)
+        w_hel = FunctionResultWrapper(rg, w_first)
+        w_wha = FunctionResultWrapper(rg, w_sec)
 
         self.assertNotEqual(w_hel.identity().__id_hash__(), w_wha.identity().__id_hash__())
         self.assertIsInstance(w_hel.identity().__id_hash__(), str)

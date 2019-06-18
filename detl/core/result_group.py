@@ -1,6 +1,5 @@
 from enum import Enum
 from detl.core.run import Run
-from detl.core.result import Result
 from detl.store.store_context import store_context
 
 
@@ -9,6 +8,7 @@ class GroupType(Enum):
 
 # TODO : ,ale more explicit
 rg_dict = {}
+
 
 def get_result_group_from_name(name):
     return rg_dict[name]
@@ -60,9 +60,6 @@ class ResultFunction(ResultGroup):
 
     def get_result_value(self, input_value):
         return self.fn(input_value)
-
-    def get_result(self, input_result):
-        return ResultFunction(self.get_result_identity(), self.get_result_value())
 
     def compute(self, input_result):
         new_id = self.get_result_identity(input_result.identity)

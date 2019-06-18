@@ -23,6 +23,7 @@ from detl.utils.file_utils import (is_directory, list_subdirs, mkdir, exists, wr
                                      write_to, append_to, make_containing_dirs, mv, get_parent_dir,
                                      list_all)
 from detl.utils.mlflow_tags import MLFLOW_RUN_NAME, MLFLOW_PARENT_RUN_ID
+from detl.store.store_context import store_context
 import yaml
 
 from detl.utils.search_utils import does_run_match_clause
@@ -136,6 +137,10 @@ class FileStore(Store):
     def get_result_path(self, res_group, resuld_id, run_uuid):
         return build_path(self._get_res_group(res_group.namespace, assert_exists=True), resuld_id.id_hash, run_uuid)
 
+    def as_default(self):
+        return store_context.get_controller(self)
+
+
     # # TODO : should this be commit dependent?
     # def create_saver(self, saver):
     #     self.savers.append(saver)
@@ -170,7 +175,7 @@ class FileStore(Store):
             raise Exception('Result Group {} does not exist.'.format(res_group_namespace))
         return None
 
-   def list_res_groups(self, view_type=ViewType.ACTIVE_ONLY):
+    def list_res_groups(self, view_type=ViewType.ACTIVE_ONLY):
 
         self._check_root_dir()
         rsl = []
@@ -191,6 +196,7 @@ class FileStore(Store):
         An identity is an item in the list, raise an error if there is an identity with the same hash
         :return:
         '''
+        # TODO : we should have a corresponding Result Group in the db, if not add it
         if self.has_identity(some_identity.__id_hash__()):
             raise ValueError("Trying to create an identity that already exists")
         self.results_data.append(some_identity)
@@ -200,6 +206,7 @@ class FileStore(Store):
         An identity is an item in the list, raise an error if there is an identity with the same hash
         :return:
         '''
+        # TODO : we should have a corresponding REsult_wrapper in the db, if not add it
         if self.has_run(run.__id_hash__()):
             raise ValueError("Trying to create a run that already exists")
         self.runs_data.append(run)

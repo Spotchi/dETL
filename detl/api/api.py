@@ -1,7 +1,6 @@
-from detl.wrapper.wrapper import Wrapper, FunctionWrapper, Product, UnpackWrapper
+from detl.core.resultwrapper import ResultWrapper, FunctionResultWrapper, Product, UnpackWrapper
 from detl.core.saving import NoSaver
 from functools import wraps
-from detl.core.identity import Identity
 from detl.store.store_context import store_context
 from detl.core.result_group import namespace_dict, ResultFunction
 from detl.core.identity import IdentityType
@@ -28,11 +27,11 @@ def load_and_save(saver, namespace, unpack=0):
             if db is None:
                 return fn(*args, **kwargs)
 
-            if len(args) == 1 and isinstance(args, Wrapper):
-                return FunctionWrapper(res_group, args[0])
+            if len(args) == 1 and isinstance(args, ResultWrapper):
+                return FunctionResultWrapper(res_group, args[0])
             # If the input is not a wrapper, use a product wrapper
             prod = Product(*args, **kwargs)
-            res_wrapper = FunctionWrapper(res_group, prod)
+            res_wrapper = FunctionResultWrapper(res_group, prod)
             # Unpack results
             if unpack == 0:
                 return res_wrapper
